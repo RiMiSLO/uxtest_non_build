@@ -1,0 +1,4 @@
+($import stdlib)
+
+($set suf (`n))
+($import 'dat-h.yu')

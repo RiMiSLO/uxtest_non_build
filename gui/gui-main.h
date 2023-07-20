@@ -1,0 +1,291 @@
+/*   _______ ___ ___      _______ _______ _______ _______      _______
+	|   |   |   |   |  _ |_     _|    ___|     __|_     _| _  |__     |
+	|   |   |-     -| |_|  |   | |    ___|__     | |   |  |_| |     __|
+	|_______|___|___|      |___| |_______|_______| |___|      |_______|
+ *//**
+ *  \file  gui-main.h
+ *  \brief  Главная форма приложения.
+ *  \author  Vitaly Kravtsov (vitaliy.kravtsov@gmail.com)
+ *  \copyright  See the LICENSE file.
+ */
+
+#ifndef GUI_MAIN_H
+#define GUI_MAIN_H
+
+#include <QApplication>
+#include <QMainWindow>
+#include <QSignalMapper>
+#include <QPixmapCache>
+
+#include <QPushButton>
+#include <QLabel>
+#include <QLayout>
+#include <QStackedWidget>
+#include <QDesktopWidget>
+#include <QListWidget>
+#include <QTableWidget>
+#include <QHeaderView>
+#include <QGroupBox>
+#include <QSpinBox>
+#include <QCheckBox>
+#include <QButtonGroup>
+#include <QShortcut>
+#include <QMessageBox>
+#include <QTimer>
+
+#include "include.h"
+#include "gui-rzu.h"
+#include "gui-start.h"
+#include "gui-net.h"
+#include "gui-clock.h"
+
+class BLabel: public QLabel
+{
+	Q_OBJECT
+
+private:
+	QPushButton *button;
+
+public:
+	explicit BLabel( QPushButton *b, QWidget *parent = 0 );
+
+protected:
+	void mousePressEvent( QMouseEvent *event );
+};
+
+class MapCell;
+
+/**
+ *  \brief Класс - Сетевое подключение.
+ */
+class Connect : public QLabel
+{
+	Q_OBJECT
+
+private:
+	static const char * const pic[];
+	int state;
+
+public:
+	Connect( QWidget* parent );
+
+	void setup( int n, MapCell *cell );
+	void setState( int value );
+};
+
+class MainWindow;
+
+/**
+ *  \brief Класс - Элемент схемы сети.
+ */
+class MapCell : public QPushButton
+{
+	Q_OBJECT
+
+private:
+	static int  shift;
+	static int  new_line;
+	static bool new_column;
+	static bool first_column;
+
+	int cell_height;
+	int pic_shift;
+
+    QPushButton *addBtn;
+
+	void setCell();
+
+protected:
+	Connect   *connector[ NET_COUNT ];
+	QCheckBox *checkbox;
+	BLabel    *caption;
+
+public:
+    MainWindow *main;
+	uint8_t page;
+	uint8_t map_index;
+	uint8_t kind;
+    uint8_t type;
+    bool selected;
+	enum {
+		OFFLINE,
+		IDLE,
+		OPERATE,
+		ERROR,
+        UPSERRORSMALL,
+	};
+	int  state;
+	bool fail;
+
+	MapCell( MainWindow *p, uint8_t pg, uint8_t inx );
+
+	void setupCell( int16_t br, QString title );
+	void setState( int value );
+	void setFail( bool value );
+	bool getFail( void );
+
+	void check() { if ( checkbox && ( state == IDLE )) checkbox->setChecked( true ); }
+	void uncheck() { if ( checkbox ) checkbox->setChecked( false ); }
+	bool isChecked() const { return (( checkbox ) ? checkbox->isChecked() : false ); }
+
+	void setConnectState( int n, int value ) { connector[ n ]->setState( value ); }
+    void setSelected( bool value );
+
+	virtual void setEnabled( bool value );
+	virtual void setText( const char *s );
+
+private slots:
+	void onCheckChanged( int state );
+
+	friend class Connect;
+};
+
+/**
+ *  \brief Класс - Главное окно.
+ */
+class MainWindow : public QMainWindow
+{
+	Q_OBJECT
+
+public:
+
+	explicit MainWindow( QWidget *parent = 0 );
+	~MainWindow();
+	virtual void customEvent( QEvent *event );
+
+private:
+    int selected;          /**< Выбранный элемент схемы. */
+	uint32_t testRunning;  /**< Маска тестов выполняющихся на отмеченных станциях. */
+	uint32_t packRunning;  /**< Маска пакетов выполняющихся на отмеченных станциях. */
+	uint32_t testRunning2; /**< Маска тестов выполняющихся на отмеченных МИ. */
+    uint32_t testRunning3; /**< Маска тестов выполняющихся на отмеченных МCP. */
+	bool idle;             /**< На отмеченных станциях не выполняются операции. */
+	bool idle2;            /**< На отмеченных МИ не выполняются операции. */
+    bool idle3;            /**< На отмеченных МCP не выполняются операции. */
+	uint8_t cntBackspace;  /**< Счетчик нажатия клавиши Backspace. */
+	TEST cmd_test;         /**< Буфер команды запуска теста. */
+	uint16_t blockProg;    /**< Состояние и номер программируеммого блока. */
+	uint16_t blockChsum;   /**< Контрольная сумма ПО программируеммого блока. */
+
+	void setupPack( void );
+	void setMask( uint8_t st, int state );
+	void setMask2( uint8_t st, int state );
+    void setMask3( uint8_t st, int state );
+	void calcRunning( void );
+	void calcRunning2( void );
+    void calcRunning3( void );
+	void updatePageTitleColor( uint8_t page );
+	void startTestMessage( uint16_t test, uint16_t rep, uint16_t par );
+	void stopTestMessage( uint16_t test );
+	void startTestMessage2( uint16_t test, uint16_t rep, uint16_t par );
+	void stopTestMessage2( uint16_t test );
+    void startTestMessage3( uint16_t test, uint16_t rep, uint16_t par );
+    void stopTestMessage3( uint16_t test );
+	void handleTest( uint8_t test, uint16_t rep, uint16_t par );
+	void handleTest2( uint8_t test, uint16_t rep, uint16_t par );
+    void handleTest3( uint8_t test, uint16_t rep, uint16_t par );
+	void startPackMessage( uint16_t pack );
+	void stopPackMessage( void );
+	void handlePack( uint8_t pack );
+	void handleDisk( uint8_t op );
+	void handleMeter( uint8_t op );
+	void handleMeterReplace( void );
+	bool handleSetName( void );
+	bool handleBlockAddr( void );
+	bool handleBlockProg( void );
+	bool handleBlockInit( void );
+	bool handleBlockReserve( void );
+	void setSummary( uint8_t ind, const char *s, int col, bool focus );
+	void scrollSummary( uint8_t ind );
+	void setJournal( byte st, const char *s, int col );
+	void setJournal2( byte st, const char *s, int col );
+    void setJournal3( byte st, const char *s, int col );
+	void clearLog( void );
+	void clearJournal( void );
+
+private:
+	QFont fontSmall;
+	QFont fontCell;
+	QTabWidget *pgMap;
+	QStackedWidget *pgTopRight;
+	QButtonGroup *grBottomButton;
+	QButtonGroup *grTestButton;
+	QButtonGroup *grCtrlButton;
+	QButtonGroup *grPrepButton;
+	QLabel *lbRZU;
+	QListWidget *lstSummary;
+	QSpinBox *edRepValue;
+    QLabel *lbStationTitle;
+    //QLabel *lbUpsTitle;
+    QList< QLabel *>lbUpsTitle;
+	QTableWidget *tabStationDatn;
+    //QTableWidget *tabUpsDatn;
+	QList< QTableWidget *>tabUpsDatn;
+    QTableWidget *tabStationDatu;
+    //QTableWidget *tabUpsDatu;
+	QList< QListWidget* > lstJournal;
+    QList< QListWidget* > lstJournal1;
+	QTableWidget *tabStationNet;
+    QTableWidget *tabUpsNet;
+	QList< QLabel* > lbBlockTitle;
+	QList< QTableWidget* > tabBlockDatb;
+	QLabel *lbMeterTitle;
+	QTableWidget *tabMeterDatm;
+    QTableWidget *tabMeterDatu;
+    QTableWidget *tabMeterNet;
+
+    QLabel *lbMCPTitle;
+    QTableWidget *tabMCPDatmcp;
+    QTableWidget *tabMCPDatu;
+    QTableWidget * tabMCPNet;
+
+	QList< QGroupBox* > grMap;
+	QList< QButtonGroup* > grMapButton;
+	QList< MapCell* > cell;
+	QTimer *timerStop;
+	QShortcut *hotStopTesting;
+	QTimer *timerBlockProgAll;
+	QShortcut *hotBlockProgAll;
+
+	SelectRZUDialog *dlgSelectRZU;
+	StartRZUDialog *dlgStartRZU;
+	TestNetDialog *dlgTestNet;
+	ClockDialog *dlgClock;
+
+	void setupTop( QHBoxLayout *loTop );
+	void setupBottom( QHBoxLayout *loBottom );
+	void setupMap( void );
+	QButtonGroup *setupButtonGroup( QGridLayout *lo, const int id[], const char * const tl[]
+	, const bool br[], unsigned count );
+	void setup( void );
+	unsigned getTestButtonInx( int id );
+	void setTestButtonRunning( int id, bool running );
+	void setBottomPage( unsigned page );
+	void selectMapFirst( void );
+	void minimizeWindow( void );
+	void restoreWindow( void );
+
+protected:
+
+private slots:
+	void onTimerStop( void );
+	void onStopTesting( void );
+	void onExitClicked( void );
+	void onTestClicked( int id );
+	void onCtrlClicked( int id );
+	void onPrepClicked( int id );
+	void onClearAllClicked( void );
+	void onCheckAllClicked( void );
+	void onMapClicked( int inx );
+	void onTimerBlockProgAll( void );
+	void onBlockProgAll( void );
+
+signals:
+
+public slots:
+	void onInstanceStarted( void );
+
+	friend class MapCell;
+};
+
+#endif /* GUI_MAIN_H */

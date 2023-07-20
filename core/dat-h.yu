@@ -1,0 +1,370 @@
+/*                 _ _     _
+     ___ ___ ___ _| |_|___| |_
+    |   |  _   _|   | |  _   _|
+    |  _|_| |___ ___|_|___  |
+    |_|                   |_|
+ *//**
+ *  \file  dat($suf).h
+ *  \brief  Array of application state-space representation.
+ *  \author  Vitaly Kravtsov
+ *  \copyright  See the LICENSE file.
+ */
+
+#ifndef DAT($upper suf)_H
+#define DAT($upper suf)_H
+
+/* All headers except standard and dictionaries
+   must be included before the following line.
+ */
+#define _IMPLEMENT defined( DAT($upper suf)_IMPLEMENT )
+#include "h-begin.h"
+
+/**
+ *  \defgroup dat($suf) Array of application state-space representation
+ *  \ingroup core
+ *
+ *  Max length of array (DAT($upper suf)_DEPTH) can not exceed 32 without increasing the size of __changed_t.
+ *  \{
+ */
+
+/**
+ *  \brief Length of array of state-space.
+ *  \hideinitializer
+ */
+#define DAT($upper suf)_DEPTH  32
+
+#define DAT($upper suf)_MASK   0xFF
+
+/**
+ *  \brief Link protocol display code.
+ *  \hideinitializer
+ */
+#define DAT($upper suf)_PROT
+
+typedef int thread($suf)_t;
+typedef int var($suf)_t;
+typedef unsigned char depth($suf)_t;
+
+/** \cond */
+
+#define DAT($upper suf)_THREAD( thread ) peek($suf)_##thread,
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+/**
+ *  \brief Identifiers of watching threads.
+ */
+enum {
+#include ($"dat($0)-dict.h" suf)
+	peek($suf)_COUNT
+};
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) type($suf)_##T,
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+/**
+ *  \brief Data types identifiers.
+ */
+enum {
+#include ($"dat($0)-dict.h" suf)
+	type($suf)_COUNT
+};
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string ) \
+	var($suf)_##var,
+
+#define T0( N, var, type, title, string ) \
+	var($suf)_##var, \
+	var($suf)_##var##_0 = var($suf)_##var,
+
+#define T( N, var, type, title, string ) \
+	var($suf)_##var##_##N,
+
+#define DAT($upper suf)_ARRAY( len, var, type, title, string ) \
+	UNFOLD( len, T0, T, var, type, title, string )
+
+/**
+ *  \brief Variables identifiers.
+ */
+enum {
+#include ($"dat($0)-dict.h" suf)
+	var($suf)_COUNT
+};
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+#undef T0
+#undef T
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string ) type var;
+#define DAT($upper suf)_ARRAY( len, var, type, title, string ) type var[ len ];
+
+/**
+ *  \brief Structure of state-space.
+ */
+typedef struct {
+#include ($"dat($0)-dict.h" suf)
+} DAT($upper suf)_VECTOR;
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+/** \endcond */
+
+/**
+ *  \brief Set data changes flag.
+ *  \param item Variable.
+ *  \param n State-space index.
+ */
+_EXT_C void dat($suf)_set_changed( const var($suf)_t item, const depth($suf)_t n );
+
+/**
+ *  \brief Set data changes flags for all variables of watching thread.
+ *  \param thread Watching thread.
+ *  \param n State-space index.
+ */
+_EXT_C void dat($suf)_set_all_changed( const thread($suf)_t thread, const depth($suf)_t n );
+
+/**
+ *  \brief Get data changes flag of variable (without data lock).
+ *  \param thread Watching thread.
+ *  \param item Variable.
+ *  \param n State-space index.
+ *  \return Change flag.
+ */
+_EXT_C int dat($suf)_get_changed_wo_lock( const thread($suf)_t thread, const var($suf)_t item, const depth($suf)_t n );
+
+/**
+ *  \brief Get data changes flag of variable.
+ *  \param thread Watching thread.
+ *  \param item Variable.
+ *  \param n State-space index.
+ *  \return Change flag.
+ */
+_EXT_C int dat($suf)_get_changed( const thread($suf)_t thread, const var($suf)_t item, const depth($suf)_t n );
+
+/**
+ *  \brief At least one variable from watching list of thread has been changed.
+ *  \param thread Watching thread.
+ *  \param n State-space index.
+ *  \return Change flag.
+ */
+_EXT_C int dat($suf)_get_changed_any( const thread($suf)_t thread, const depth($suf)_t n );
+
+/**
+ *  \brief Add variables to watching list of thread.
+ *  \param thread Watching thread.
+ *  \param vars Variables list (var($suf)_COUNT is list terminator).
+ *  Only first variable of array will be added if array in list.
+ */
+_EXT_C void dat($suf)_watch( const thread($suf)_t thread, const var($suf)_t *vars );
+
+/**
+ *  \brief Add arrays to watching list of thread.
+ *  \param thread Watching thread.
+ *  \param vars Arrays list (var($suf)_COUNT is list terminator).
+ *  Variable and the rest of array will be added if variable in list.
+ */
+_EXT_C void dat($suf)_watch_array( const thread($suf)_t thread, const var($suf)_t *vars );
+
+/**
+ *  \brief Clear watching list of thread.
+ *  \param thread Watching thread.
+ */
+_EXT_C void dat($suf)_clear_watch( const thread($suf)_t thread );
+
+/**
+ *  \brief Reset data changes flag of variable.
+ *  \param thread Watching thread.
+ *  \param item Variable.
+ *  \param n State-space index.
+ */
+_EXT_C void dat($suf)_reset( const thread($suf)_t thread, const var($suf)_t item, const depth($suf)_t n );
+
+/**
+ *  \brief Reset data changes flags of all variables of thread.
+ *  \param thread Watching thread.
+ *  \param n State-space index.
+ */
+_EXT_C void dat($suf)_reset_all( const thread($suf)_t thread, const depth($suf)_t n );
+
+/**
+ *  \brief Search variable by name.
+ *  \param s Variable name.
+ *  \param from From variable.
+ *  \param to Up to variable.
+ */
+_EXT_C var($suf)_t dat($suf)_atovar( const char *s, const var($suf)_t from, const var($suf)_t to );
+
+/**
+ *  \brief Get variable name.
+ *  \param item Variable.
+ *  \return Name.
+ */
+_EXT_C char *dat($suf)_vartoa( const var($suf)_t item );
+
+/**
+ *  \brief Set state-space from snapshot.
+ *  \param dat($suf) - Snapshot pointer.
+ *  \param n State-space index.
+ */
+_EXT_C int dat($suf)_set_vector( const DAT($upper suf)_VECTOR *dat($suf), const depth($suf)_t n );
+
+/**
+ *  \brief Set state-space from snapshot (test variables only _ut_*).
+ *  \param dat($suf) - Snapshot pointer.
+ *  \param n State-space index.
+ */
+_EXT_C int dat($suf)_set_vector__ut( const DAT($upper suf)_VECTOR *dat($suf), const depth($suf)_t n );
+
+/**
+ *  \brief Get state-space data pointer.
+ *  \param n State-space index.
+ *  \return Data pointer.
+ */
+_EXT_C DAT($upper suf)_VECTOR *dat($suf)_get_vector( const depth($suf)_t n );
+
+/**
+ *  \brief Compare vectors.
+ *  \param dat($suf)1 - 1st state-space.
+ *  \param dat($suf)2 - 2nd state-space.
+ *  \return Equality flag.
+ */
+_EXT_C int dat($suf)_cmp_vector( const DAT($upper suf)_VECTOR *dat($suf)1, const DAT($upper suf)_VECTOR *dat($suf)2 );
+
+/**
+ *  \brief Compare vectors (test variables only _ut_*).
+ *  \param dat($suf)1 - 1st state-space.
+ *  \param dat($suf)2 - 2nd state-space.
+ *  \return Equality flag.
+ */
+_EXT_C int dat($suf)_cmp_vector__ut( const DAT($upper suf)_VECTOR *dat($suf)1, const DAT($upper suf)_VECTOR *dat($suf)2 );
+
+/** \cond */
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) \
+	_EXT_C char *str($suf)_##T( char *s, T value, int *col );
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) \
+	_EXT_C T dat($suf)_get_##T( const var($suf)_t item, const depth($suf)_t n ); \
+	_EXT_C char *dat($suf)_get_string_##T( char *s, const var($suf)_t item, const depth($suf)_t n ); \
+	_EXT_C void dat($suf)_set_##T( const var($suf)_t item, T value, const depth($suf)_t n );
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+/** \endcond */
+
+
+/**
+ *  \brief Set value of variable of any type.
+ *  \param item Variable.
+ *  \param value Value pointer.
+ *  \param n State-space index.
+ *  Useful only in case variable type is unknown in compile-time.
+ */
+_EXT_C void dat($suf)_set( const var($suf)_t item, void *value, const depth($suf)_t n );
+
+/**
+ *  \brief Set taken from string value of variable.
+ *  \param item Variable.
+ *  \param s String.
+ *  \param n State-space index.
+ *  Useful only in case variable type is unknown in compile-time.
+ */
+_EXT_C void dat($suf)_set_string( const var($suf)_t item, const char *s, const depth($suf)_t n );
+
+/**
+ *  \brief Get value of variable as string.
+ *  \param s String buffer.
+ *  \param item Variable.
+ *  \param n State-space index.
+ *  \return String.
+ *  Useful only in case variable type is unknown in compile-time.
+ */
+_EXT_C char *dat($suf)_get_string( char *s, const var($suf)_t item, const depth($suf)_t n );
+
+/**
+ *  \brief Get variable type as string.
+ *  \param item Variable.
+ */
+_EXT_C char *dat($suf)_get_type( const var($suf)_t item );
+
+/**
+ *  \brief Get title of variable.
+ *  \param item Variable.
+ */
+_EXT_C char *dat($suf)_get_title( const var($suf)_t item );
+
+/**
+ *  \brief Lock data access (callback).
+ */
+_EXT void ( *dat($suf)_lock_callback )( void );
+
+/**
+ *  \brief Unlock data access (callback).
+ */
+_EXT void ( *dat($suf)_unlock_callback )( void );
+
+/**
+ *  \brief Lock data access.
+ */
+_EXT_C void dat($suf)_lock( void );
+
+/**
+ *  \brief Unlock data access.
+ */
+_EXT_C void dat($suf)_unlock( void );
+
+_EXT_C void dat($suf)_clear_updated( const depth($suf)_t n );
+_EXT_C void dat($suf)_set_updated( const depth($suf)_t n );
+_EXT_C uint8_t dat($suf)_check_updated( const depth($suf)_t n );
+
+/** \} */
+
+#include "h-end.h"
+
+#endif /* DAT($upper suf)_H */

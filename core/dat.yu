@@ -1,0 +1,735 @@
+/*                 _ _     _
+     ___ ___ ___ _| |_|___| |_
+    |   |  _   _|   | |  _   _|
+    |  _|_| |___ ___|_|___  |
+    |_|                   |_|
+ *//**
+ *  \file  dat($suf).c
+ *  \brief  Array of application state-space representation.
+ *  \author  Vitaly Kravtsov
+ *  \copyright  See the LICENSE file.
+ */
+
+#define DAT($upper suf)_IMPLEMENT
+#include "include.h"
+
+/**
+ *  \addtogroup dat($suf)
+ *  \{
+ */
+
+typedef int __type_t;
+typedef int __length_t;
+typedef int __changed_t;
+
+/**
+ *  \brief Descriptor of state variable.
+ */
+struct DAT($upper suf)_DESCRY {
+	/**  Variable name */
+	const char *name;
+	/**  Variable title */
+	const char *title;
+	/**  Type */
+	__type_t type;
+	/**  Array length */
+	__length_t len;
+	/**  Variable offset in state-space */
+	size_t offset;
+	/**  value-to-string function */
+	void *string;
+};
+
+typedef const struct DAT($upper suf)_DESCRY *dat($suf)_descry_t;
+
+static uint8_t __updated[ DAT($upper suf)_DEPTH ];
+static char __str[ 100 ];
+
+static __inline void __set_changed( const var($suf)_t item, const depth($suf)_t n );
+static __inline void *__dat($suf)_var( const var($suf)_t item, const depth($suf)_t n );
+
+/**
+ *  \brief State-space.
+ */
+static DAT($upper suf)_VECTOR dat($suf)_vector[ DAT($upper suf)_DEPTH ];
+
+/** \cond */
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string ) \
+	{ __stringify( var ), title, type($suf)_##type, 1, offsetof( DAT($upper suf)_VECTOR, var ), ( void *) string },
+
+#define T( N, len, var, type, title, string ) \
+	{ __stringify( var##_##N ), title " (" __stringify( N ) ")", type($suf)_##type, ( len - N ), offsetof( DAT($upper suf)_VECTOR, var[ N ]), ( void *) string },
+
+#define DAT($upper suf)_ARRAY( len, var, type, title, string ) \
+	UNFOLD( len, T, T, len, var, type, title, string )
+
+/**
+ *  \brief Descriptor of state-space.
+ */
+static const struct DAT($upper suf)_DESCRY dat($suf)_descry[] = {
+#include ($"dat($0)-dict.h" suf)
+	{ "none", "none", type($suf)_COUNT, 0, 0, str($suf)_byte },
+};
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+#undef T
+
+
+#define DAT($upper suf)_THREAD( thread ) \
+	static __changed_t dat($suf)_changed_##thread[ var($suf)_COUNT ]; \
+	static __changed_t dat($suf)_mask_##thread[ var($suf)_COUNT ];
+
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread ) dat($suf)_changed_##thread,
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+/**
+ *  \brief Matrix of dat($suf) changes flags of variables.
+ */
+static __changed_t *dat($suf)_changed[] = {
+#include ($"dat($0)-dict.h" suf)
+
+#ifdef _MSC_VER
+	NULL
+
+#endif
+};
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread ) dat($suf)_mask_##thread,
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+/**
+ *  \brief Matrix of watching masks.
+ */
+static __changed_t *dat($suf)_mask[] = {
+#include ($"dat($0)-dict.h" suf)
+
+#ifdef _MSC_VER
+	NULL
+
+#endif
+};
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) __stringify( T ),
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+static const char *dat($suf)_type_string[] = {
+#include ($"dat($0)-dict.h" suf)
+};
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) typedef char *( *str($suf)_##T##_t )( char *, T, int * );
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+/**
+ *  \brief value-to-string functions prototypes.
+ */
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) \
+char *str($suf)_##T( char *s, T value, int *col ) \
+{ \
+	( void ) col; \
+	sprintf( s, format, value ); \
+	return ( s ); \
+}
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+static __inline void *__dat($suf)_var( const var($suf)_t item, const depth($suf)_t n )
+{
+	return ( void * )(( size_t )( dat($suf)_vector + n ) + dat($suf)_descry[ item ].offset );
+}
+
+static __inline int __dat($suf)_filter( const char *name )
+{
+
+#ifdef DAT($upper suf)_PROT
+	return ((( *ini_dat($suf)_prot_filter      == '\0' ) || ( strstr( name, ini_dat($suf)_prot_filter      ) != 0 ))
+		 && (( *ini_dat($suf)_prot_filter_skip == '\0' ) || ( strstr( name, ini_dat($suf)_prot_filter_skip ) == 0 ))
+	);
+
+#else
+	return ( 0 );
+
+#endif
+}
+
+static __inline void __dat($suf)_print( const char *name, const depth($suf)_t n, const char *value )
+{
+
+#ifdef DAT($upper suf)_PROT
+	printf( __CRLF__"\t" );
+	printf( clock_stamp( NULL, __str ));
+	printf( "   %-22s[ %d ]  %s", name, n, value );
+
+#endif
+}
+
+#define DAT($upper suf)_CHK_THREAD( thread, R ) do { \
+	if ( thread >= peek($suf)_COUNT ) { \
+		assert_fail( "invalid thread index (%d)", thread ); \
+		return R; \
+	} \
+} while ( 0 )
+
+#define DAT($upper suf)_CHK_VAR( item, op, R ) do { \
+	if ( item >= var($suf)_COUNT ) { \
+		assert_fail( "attempt to %s var with invalid index (%d)", op, item ); \
+		return R; \
+	} \
+} while ( 0 )
+
+#define DAT($upper suf)_CHK_TYPE( item, T, op, R ) do { \
+	if ( dat($suf)_descry[ item ].type != type($suf)_##T ) { \
+		assert_fail( "attempt to %s \"%s\" (%d) as %s while it's %s" \
+		, op \
+		, dat($suf)_descry[ item ].name \
+		, item \
+		, dat($suf)_type_string[ type($suf)_##T ] \
+		, dat($suf)_type_string[ dat($suf)_descry[ item ].type ] \
+		); \
+		return R; \
+	} \
+} while ( 0 )
+
+#define DAT($upper suf)_CHK_N( n, R ) do { \
+	if ( n >= DAT($upper suf)_DEPTH ) { \
+		assert_fail( "invalid state-space index (%d)", n ); \
+		return R; \
+	} \
+} while ( 0 )
+
+#define DAT($upper suf)_LOCK() do { \
+	if ( dat($suf)_lock_callback ) dat($suf)_lock_callback(); \
+} while ( 0 )
+
+#define DAT($upper suf)_UNLOCK() do { \
+	if ( dat($suf)_unlock_callback ) dat($suf)_unlock_callback(); \
+} while ( 0 )
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) \
+T dat($suf)_get_##T( const var($suf)_t item, const depth($suf)_t n ) \
+{ \
+	T result; \
+	DAT($upper suf)_CHK_N( n, 0 ); \
+	DAT($upper suf)_CHK_VAR( item, "get", 0 ); \
+	DAT($upper suf)_CHK_TYPE( item, T, "get", 0 ); \
+	DAT($upper suf)_LOCK(); \
+	result = *(( T *) __dat($suf)_var( item, n )); \
+	DAT($upper suf)_UNLOCK(); \
+	return ( result ); \
+} \
+\
+char *dat($suf)_get_string_##T( char *s, const var($suf)_t item, const depth($suf)_t n ) \
+{ \
+	char *result; \
+	int col; \
+	DAT($upper suf)_CHK_N( n, NULL ); \
+	DAT($upper suf)_CHK_VAR( item, "get", NULL ); \
+	DAT($upper suf)_CHK_TYPE( item, T, "get", NULL ); \
+	DAT($upper suf)_LOCK(); \
+	result = (( str($suf)_##T##_t ) dat($suf)_descry[ item ].string )( s, *(( T *) __dat($suf)_var( item, n )), &col ); \
+	DAT($upper suf)_UNLOCK(); \
+	return ( result ); \
+} \
+\
+void dat($suf)_set_##T( const var($suf)_t item, T value, const depth($suf)_t n ) \
+{ \
+	T *var; \
+	int col; \
+	DAT($upper suf)_CHK_N( n, ); \
+	DAT($upper suf)_CHK_VAR( item, "set", ); \
+	DAT($upper suf)_CHK_TYPE( item, T, "set", ); \
+	var = ( T *) __dat($suf)_var( item, n ); \
+	DAT($upper suf)_LOCK(); \
+	if ( *var != value ) { \
+		*var = value; \
+		__set_changed( item, n ); \
+		if ( ini_dat($suf)_prot ) { \
+			const char *name = dat($suf)_descry[ item ].name; \
+			if ( __dat($suf)_filter( name ))	{ \
+				__dat($suf)_print( name, n, (( str($suf)_##T##_t ) dat($suf)_descry[ item ].string )( __str, *var, &col )); \
+			} \
+		} \
+	} \
+	DAT($upper suf)_UNLOCK(); \
+}
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+
+char *dat($suf)_get_string( char *s, const var($suf)_t item, const depth($suf)_t n )
+{
+	switch ( dat($suf)_descry[ item ].type ) {
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) \
+	case type($suf)_##T: \
+		return dat($suf)_get_string_##T( s, item, n );
+
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+
+	default:
+		return "?";
+	}
+}
+
+void dat($suf)_set_string( const var($suf)_t item, const char *s, const depth($suf)_t n )
+{
+	char *end;
+
+	switch ( dat($suf)_descry[ item ].type ) {
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) \
+	case type($suf)_##T: \
+		do { \
+			T val = ( T ) strto( s, &end ); \
+			if ( *end == '\0' ) { \
+				dat($suf)_set_##T( item, val, n ); \
+			} else { \
+				assert_fail( "attempt to set invalid \"%s\" %s value (%s)" \
+				, dat($suf)_descry[ item ].name \
+				, dat($suf)_type_string[ type($suf)_##T ] \
+				, s \
+				); \
+			} \
+		} while ( 0 ); \
+		return;
+
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+	}
+}
+
+void dat($suf)_set( const var($suf)_t item, void *value, const depth($suf)_t n )
+{
+	switch ( dat($suf)_descry[ item ].type ) {
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto ) \
+	case type($suf)_##T: \
+		dat($suf)_set_##T( item, *( T *) value, n ); \
+		break;
+
+#define DAT($upper suf)_VAR( var, type, title, string )
+#define DAT($upper suf)_ARRAY( len, var, type, title, string )
+
+#include ($"dat($0)-dict.h" suf)
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+	}
+}
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string ) \
+	if ( dat($suf)_vector[ n ].var != dat($suf)->var ) { \
+		dat($suf)_vector[ n ].var = dat($suf)->var; \
+		__set_changed( var($suf)_##var, n ); \
+	}
+
+#define T( N, var, type, title, string ) \
+	if ( dat($suf)_vector[ n ].var[ N ] != dat($suf)->var[ N ]) { \
+		dat($suf)_vector[ n ].var[ N ] = dat($suf)->var[ N ]; \
+		__set_changed( var($suf)_##var##_##N, n ); \
+	}
+
+#define DAT($upper suf)_ARRAY( len, var, type, title, string ) \
+	UNFOLD( len, T, T, var, type, title, string )
+
+int dat($suf)_set_vector( const DAT($upper suf)_VECTOR *dat($suf), const depth($suf)_t n )
+{
+	DAT($upper suf)_CHK_N( n, 0 );
+
+	DAT($upper suf)_LOCK();
+
+#ifdef    LINK_UT_DAT($upper suf)
+#define __LINK_UT_DAT($upper suf)__
+#undef    LINK_UT_DAT($upper suf)
+#endif
+
+#include ($"dat($0)-dict.h" suf)
+
+#ifdef __LINK_UT_DAT($upper suf)__
+#define  LINK_UT_DAT($upper suf)
+#undef __LINK_UT_DAT($upper suf)__
+#endif
+
+	DAT($upper suf)_UNLOCK();
+
+	return ( 1 );
+}
+
+int dat($suf)_set_vector__ut( const DAT($upper suf)_VECTOR *dat($suf), const depth($suf)_t n )
+{
+	DAT($upper suf)_CHK_N( n, 0 );
+
+	DAT($upper suf)_LOCK();
+
+#include ($"dat($0)-dict.h" suf)
+
+	DAT($upper suf)_UNLOCK();
+
+	return ( 1 );
+}
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+#undef T
+
+
+#define DAT($upper suf)_THREAD( thread )
+#define DAT($upper suf)_TYPE( T, format, strto )
+#define DAT($upper suf)_VAR( var, type, title, string ) \
+	if ( dat($suf)1->var != dat($suf)2->var ) return ( 0 );
+
+#define T( N, var, type, title, string ) \
+	if ( dat($suf)1->var[ N ] != dat($suf)2->var[ N ]) return ( 0 );
+
+#define DAT($upper suf)_ARRAY( len, var, type, title, string ) \
+	UNFOLD( len, T, T, var, type, title, string )
+
+int dat($suf)_cmp_vector( const DAT($upper suf)_VECTOR *dat($suf)1, const DAT($upper suf)_VECTOR *dat($suf)2 )
+{
+
+#ifdef    LINK_UT_DAT($upper suf)
+#define __LINK_UT_DAT($upper suf)__
+#undef    LINK_UT_DAT($upper suf)
+#endif
+
+#include ($"dat($0)-dict.h" suf)
+
+#ifdef __LINK_UT_DAT($upper suf)__
+#define  LINK_UT_DAT($upper suf)
+#undef __LINK_UT_DAT($upper suf)__
+#endif
+
+	return ( 1 );
+}
+
+int dat($suf)_cmp_vector__ut( const DAT($upper suf)_VECTOR *dat($suf)1, const DAT($upper suf)_VECTOR *dat($suf)2 )
+{
+
+#include ($"dat($0)-dict.h" suf)
+
+	return ( 1 );
+}
+
+#undef DAT($upper suf)_THREAD
+#undef DAT($upper suf)_TYPE
+#undef DAT($upper suf)_VAR
+#undef DAT($upper suf)_ARRAY
+#undef T
+
+/** \endcond */
+
+DAT($upper suf)_VECTOR *dat($suf)_get_vector( const depth($suf)_t n )
+{
+	DAT($upper suf)_CHK_N( n, NULL );
+
+	return ( dat($suf)_vector + n );
+}
+
+static __inline void __set_changed( const var($suf)_t item, const depth($suf)_t n )
+{
+	thread($suf)_t i;
+	__changed_t mask = 1UL << n;
+
+	for ( i = 0; i < peek($suf)_COUNT; i++ ) {
+		if ( dat($suf)_mask[ i ][ item ]) dat($suf)_changed[ i ][ item ] |= mask;
+	}
+}
+
+void dat($suf)_set_changed( const var($suf)_t item, const depth($suf)_t n )
+{
+	DAT($upper suf)_CHK_N( n, );
+	DAT($upper suf)_CHK_VAR( item, "set change of", );
+	DAT($upper suf)_LOCK();
+	__set_changed( item, n );
+	DAT($upper suf)_UNLOCK();
+}
+
+void dat($suf)_set_all_changed( const thread($suf)_t thread, const depth($suf)_t n )
+{
+	var($suf)_t i;
+	__changed_t mask;
+
+	DAT($upper suf)_CHK_THREAD( thread, );
+	mask = ( n < DAT($upper suf)_DEPTH ) ? 1UL << n : ( __changed_t ) DAT($upper suf)_MASK;
+	DAT($upper suf)_LOCK();
+	for ( i = 0; i < var($suf)_COUNT; i++ ) {
+		if ( dat($suf)_mask[ thread ][ i ]) dat($suf)_changed[ thread ][ i ] |= mask;
+	}
+	DAT($upper suf)_UNLOCK();
+}
+
+static int __get_changed( const thread($suf)_t thread, const var($suf)_t item, const depth($suf)_t n )
+{
+	return (( dat($suf)_changed[ thread ][ item ] & ( 1UL << n )) != 0 );
+}
+
+int dat($suf)_get_changed_wo_lock( const thread($suf)_t thread, const var($suf)_t item, const depth($suf)_t n )
+{
+	int result;
+
+	DAT($upper suf)_CHK_THREAD( thread, 0 );
+	DAT($upper suf)_CHK_N( n, 0 );
+	DAT($upper suf)_CHK_VAR( item, "get change of", 0 );
+	result = __get_changed( thread, item, n );
+
+	return ( result );
+}
+
+int dat($suf)_get_changed( const thread($suf)_t thread, const var($suf)_t item, const depth($suf)_t n )
+{
+	int result;
+
+	DAT($upper suf)_CHK_THREAD( thread, 0 );
+	DAT($upper suf)_CHK_N( n, 0 );
+	DAT($upper suf)_CHK_VAR( item, "get change of", 0 );
+	DAT($upper suf)_LOCK();
+	result = __get_changed( thread, item, n );
+	DAT($upper suf)_UNLOCK();
+
+	return ( result );
+}
+
+int dat($suf)_get_changed_any( const thread($suf)_t thread, const depth($suf)_t n )
+{
+	var($suf)_t i;
+	__changed_t mask;
+
+	DAT($upper suf)_CHK_THREAD( thread, 0 );
+	DAT($upper suf)_CHK_N( n, 0 );
+	mask = 1UL << n;
+	DAT($upper suf)_LOCK();
+	for ( i = 0; i < var($suf)_COUNT; i++ ) {
+		if ( dat($suf)_changed[ thread ][ i ] & mask ) {
+			DAT($upper suf)_UNLOCK();
+
+			return ( 1 );
+		}
+	}
+	DAT($upper suf)_UNLOCK();
+
+	return ( 0 );
+}
+
+void dat($suf)_watch( const thread($suf)_t thread, const var($suf)_t *vars )
+{
+	DAT($upper suf)_CHK_THREAD( thread, );
+	DAT($upper suf)_LOCK();
+	while ( *vars < var($suf)_COUNT ) dat($suf)_mask[ thread ][ *vars++ ] = 1;
+	DAT($upper suf)_UNLOCK();
+}
+
+void dat($suf)_watch_array( const thread($suf)_t thread, const var($suf)_t *vars )
+{
+	DAT($upper suf)_CHK_THREAD( thread, );
+	DAT($upper suf)_LOCK();
+	while ( *vars < var($suf)_COUNT ) {
+		var($suf)_t i;
+
+		for ( i = *vars + dat($suf)_descry[ *vars ].len - 1; i >= *vars; i-- ) {
+			dat($suf)_mask[ thread ][ i ] = 1;
+		}
+		++vars;
+	}
+	DAT($upper suf)_UNLOCK();
+}
+
+void dat($suf)_clear_watch( const thread_t thread )
+{
+	var($suf)_t i;
+
+	DAT($upper suf)_CHK_THREAD( thread, );
+	DAT($upper suf)_LOCK();
+	for ( i = 0; i < var($suf)_COUNT; i++ ) {
+		dat($suf)_mask[ thread ][ i ] = 0;
+		dat($suf)_changed[ thread ][ i ] = 0;
+	}
+	DAT($upper suf)_UNLOCK();
+}
+
+void dat($suf)_reset( const thread($suf)_t thread, const var($suf)_t item, const depth($suf)_t n )
+{
+	DAT($upper suf)_CHK_THREAD( thread, );
+	DAT($upper suf)_CHK_N( n, );
+	DAT($upper suf)_CHK_VAR( item, "set change of", );
+	DAT($upper suf)_LOCK();
+	dat($suf)_changed[ thread ][ item ] &= ~( 1UL << n );
+	DAT($upper suf)_UNLOCK();
+}
+
+void dat($suf)_reset_all( const thread($suf)_t thread, const depth($suf)_t n )
+{
+	var($suf)_t i;
+	__changed_t mask;
+
+	DAT($upper suf)_CHK_THREAD( thread, );
+	DAT($upper suf)_CHK_N( n, );
+	mask = ~( 1UL << n );
+	DAT($upper suf)_LOCK();
+	for ( i = 0; i < var($suf)_COUNT; i++ ) dat($suf)_changed[ thread ][ i ] &= mask;
+	DAT($upper suf)_UNLOCK();
+}
+
+var($suf)_t dat($suf)_atovar( const char *s, const var($suf)_t from, const var($suf)_t to )
+{
+	var($suf)_t i;
+
+	for ( i = from; i <= to; i++ ) {
+		if ( strcmp( dat($suf)_descry[ i ].name, s ) == 0 ) return ( i );
+	}
+	return ( var($suf)_COUNT );
+}
+
+char *dat($suf)_vartoa( const var($suf)_t item )
+{
+	DAT($upper suf)_CHK_VAR( item, "get name of", "" );
+
+	return (( char *) dat($suf)_descry[ item ].name );
+}
+
+char *dat($suf)_get_type( const var($suf)_t item )
+{
+	DAT($upper suf)_CHK_VAR( item, "get type of", "" );
+
+	return (( char *) dat($suf)_type_string[ dat($suf)_descry[ item ].type ]);
+}
+
+char *dat($suf)_get_title( const var($suf)_t item )
+{
+	DAT($upper suf)_CHK_VAR( item, "get title of", "" );
+
+	return (( char *) dat($suf)_descry[ item ].title );
+}
+
+void dat($suf)_lock( void )
+{
+	DAT($upper suf)_LOCK();
+}
+
+void dat($suf)_unlock( void )
+{
+	DAT($upper suf)_UNLOCK();
+}
+
+void dat($suf)_clear_updated( const depth($suf)_t n )
+{
+	DAT($upper suf)_CHK_N( n, );
+
+	DAT($upper suf)_LOCK();
+	__updated[ n ] = 0;
+	DAT($upper suf)_UNLOCK();
+}
+
+void dat($suf)_set_updated( const depth($suf)_t n )
+{
+	DAT($upper suf)_CHK_N( n, );
+
+	DAT($upper suf)_LOCK();
+	__updated[ n ] = 1;
+	DAT($upper suf)_UNLOCK();
+}
+
+uint8_t dat($suf)_check_updated( const depth($suf)_t n )
+{
+	uint8_t result;
+
+	DAT($upper suf)_CHK_N( n, 0 );
+
+	DAT($upper suf)_LOCK();
+	result = __updated[ n ];
+	DAT($upper suf)_UNLOCK();
+
+	return ( result );
+}
+
+/** \} */
