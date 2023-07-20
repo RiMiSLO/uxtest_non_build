@@ -2,11 +2,6 @@
 	|   |   |   |   |  _ |_     _|    ___|     __|_     _| _  |__     |
 	|   |   |-     -| |_|  |   | |    ___|__     | |   |  |_| |     __|
 	|_______|___|___|      |___| |_______|_______| |___|      |_______|
- *//**
- *  \file  main.cpp
- *  \brief  uxtest2 - ПУНВД АСУ РБ.
- *  \author  Vitaly Kravtsov (vitaliy.kravtsov@gmail.com)
- *  \copyright  See the LICENSE file.
  */
 
 #include "include.h"
@@ -57,21 +52,6 @@ static void *udp( void *p )
 	return ( NULL );
 }
 
-//extern void snmp_thread( void );
-//extern void snmp_init( void );
-//extern void snmp_uninit( void );
-
-//static void *snmpmess( void *p )
-//{
-//    ( void ) p;
-
-//    snmp_init();
-//    snmp_thread();
-//    snmp_uninit();
-//    pthread_exit( NULL );
-
-//    return ( NULL );
-//}
 
 
 void quitHandle( int ) {
@@ -104,14 +84,7 @@ int main( int argc, char *argv[])
 		return ( result );
 	}
 
-//    /* start snmp */
-//    pthread_t t_snmp;
-//    result = pthread_create(&t_snmp, NULL, &snmpmess, NULL );
-//    if ( result != 0 ) {
-//        __echo( "ERROR", "pthread_create() = %d" __CRLF__, result );
 
-//        return ( result );
-//    }
 
 	/* start udp */
 	pthread_t t_udp;
